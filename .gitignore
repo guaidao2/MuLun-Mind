@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.DS_Store
+*.pth
+*.safetensors
+*.bin
+out/
+backup_prev_train/
+dataset/*.parquet
+dataset/*_labels.json
+official_weight/
+checkpoints/
+*.log

@@ -1,0 +1,14 @@
+# mulun — core dependencies
+torch>=2.0.0
+transformers>=4.30.0
+numpy>=1.24.0
+tqdm>=4.64.0
+
+# Training data
+pyarrow>=10.0.0
+
+# Optional: inference
+sentencepiece>=0.1.99
+
+# Optional: wandb logging
+# swanlab>=0.1.0

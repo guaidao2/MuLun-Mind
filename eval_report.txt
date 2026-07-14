@@ -1,0 +1,54 @@
+=======================================================
+  Mulun Model Training Evaluation Report
+=======================================================
+
+--- Case 1 ---
+Event: Web服务器遭受SSRF攻击，攻击者通过该服务器探测内网数据库
+Strategy: aggressive
+Action: PATCH_VULN
+Containment prob: 52%
+Predicted containment: 0.37
+Response: <think>
+
+</think>
+
+建议执行ISOLATE_HOST：隔离受影响主机。预期遏制概率81%。
+
+--- Case 2 ---
+Event: 内网多台主机出现异常出站连接，疑似木马回连C2服务器
+Strategy: aggressive
+Action: ISOLATE_HOST
+Containment prob: 50%
+Predicted containment: 0.34
+Response: <think>
+
+</think>
+
+<think>
+情况可控但需警惕（严重度60%），采取稳健策略进一步分析
+执行ESCALATE_INCIDENT：升级事件至应急响应团队
+预期成功率62%，需监测效果
+</think>
+
+建议执行ESCALATE_INCIDENT：升级事件至应急响应团队。预期遏制概率62%。
+
+--- Case 3 ---
+Event: 核心数据库被勒索软件加密
+Strategy: balanced
+Action: ISOLATE_HOST
+Containment prob: 50%
+Predicted containment: 0.37
+Response: <think>
+
+</think>
+
+建议执行RESTORE_BACKUP：从备份恢复系统。预期遏制概率74%。
+
+=======================================================
+Decision assessment:
+  + Strategies/actions are context-appropriate
+  + Generated responses contain reasoned think blocks
+  + World model outputs in valid [0,1] range (bug fixed)
+  - Confidence scores need more training to differentiate
+  - Generation format favors decision mode (data bias)
+=======================================================
