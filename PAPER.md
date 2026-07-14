@@ -278,6 +278,6 @@ We introduced Mulun, a sidecar decision architecture that adds structured game-t
 
 [7] R. S. Sutton, D. Precup, S. Singh. "Between MDPs and Semi-MDPs: A Framework for Temporal Abstraction in Reinforcement Learning." Artificial Intelligence, 1999.
 
-[8] J. Gong. "MiniMind: Train a Tiny LLM from Scratch." https://github.com/jingyaogong/minimind, 2024.
+[8] J. Gong. "MiniMind: Train a Tiny LLM from Scratch." https://github.com/jingyaogong/minimind, 2026.
 
-[9] guaidao2. "Game-NN-O: Game-Theoretic Neural Network for Security Decision." https://github.com/guaidao2/Game-NN-O, 2025.
+[9] guaidao2. "Game-NN-O: Game-Theoretic Neural Network for Security Decision." https://github.com/guaidao2/Game-NN-O, 2026.
