@@ -1,84 +1,87 @@
-# Mulun (幕论) — Language-Guided Game-Theoretic Decision Architecture
+# Mulun（幕论）— 面向语言引导博弈推理的侧枝决策架构
 
-Mulun is a **sidecar decision architecture** that adds structured game-theoretic reasoning to language models without modifying their internal Transformer backbone. Developed by **玄幕安全团队 (XuanMu Security Team)**.
+Mulun 是一种**侧枝决策架构（Sidecar Decision Architecture）**，在不修改底层 Transformer 骨干的前提下，为语言模型添加结构化博弈推理能力。由 **玄幕安全团队** 开发。
 
-## Architecture Overview
+> 📄 **论文：**
+> - [PAPER_CN.md](./PAPER_CN.md) — 中文版
+> - [PAPER.md](./PAPER.md) — English
+
+---
+
+## 架构总览
 
 ```
 ┌────────────────────────────────────────────────────┐
-│              Language Backbone (MiniMind)           │
-│  64M params · 8 Transformer layers · 768 hidden    │
-│  Vocabulary: 7195 tokens (6400 base + 795 sec)     │
+│             语言骨干（MiniMind）                     │
+│  64M 参数 · 8 层 Transformer · 768 隐藏维           │
+│  词表：7195 token（6400 基础 + 795 安全术语）        │
 └────────────────────┬───────────────────────────────┘
-                     │ hidden[768] at <think> positions
+                     │ hidden[768] 在 <think> 位置
                      ▼
 ┌────────────────────────────────────────────────────┐
-│            GameNNDecisionHead (Sidecar)              │
-│                                                     │
-│  hidden → StateEncoder → state[16] → RNNStep        │
-│                                         ↓           │
-│                              ActionValueHead         │
-│                                → strategy (3)       │
-│                                → action (8)         │
-│                                → confidence          │
-│                                         ↓           │
-│                              WorldModel              │
-│                                → containment_prob   │
-│                                → predicted_state    │
-│                                         ↓           │
-│                              ThinkFuser              │
-│                                → biased LM logits   │
+│           GameNNDecisionHead（侧枝决策头）             │
+│                                                      │
+│  hidden → 状态编码器 → state[16] → RNN决策步          │
+│                                          ↓           │
+│                               动作价值头               │
+│                                 → 策略（3种）         │
+│                                 → 动作（8种）         │
+│                                 → 置信度              │
+│                                          ↓           │
+│                               世界模型                 │
+│                                 → 遏制概率            │
+│                                 → 预测状态            │
+│                                          ↓           │
+│                               思考融合器               │
+│                                 → 偏置后的 LM logits  │
 └────────────────────────────────────────────────────┘
 ```
 
-## Released Versions
+## 发布版本
 
-| Version | Params | Decision Head | Conf Spread | Contain Spread | Strengths |
-|---------|:------:|:-------------:|:-----------:|:--------------:|:----------|
-| **Mulun-State16** | 65.5M | 952K MLP | **0.44** | 0.03 | Best strategy/action differentiation |
-| **Mulun-Fusion16** | 65.7M | 1.2M RSSM | 0.17 | **0.09** | Best world model / containment |
-| **Mulun-Classic** | 65.5M | 952K MLP | 0.21 | 0.02 | Balanced trade-off |
+| 版本 | 参数量 | 决策头 | 置信度价差 | 遏制价差 | 核心优势 |
+|:-----|:------:|:------:|:---------:|:--------:|:---------|
+| **Mulun-State16** | 65.5M | 952K MLP | **0.44** | 0.03 | 策略/动作区分最佳 |
+| **Mulun-Fusion16** | 65.7M | 1.2M RSSM | 0.17 | **0.09** | 世界模型/遏制预测最佳 |
+| **Mulun-Classic** | 65.5M | 952K MLP | 0.21 | 0.02 | 均衡折衷 |
 
-All variants share the same MiniMind backbone (64M) and differ only in the sidecar module. Trainable on a single RTX 5060 8GB GPU in under 3 hours.
+三个版本共享相同的 MiniMind 骨干（64M），仅在侧枝模块上不同。全部可在单张 RTX 5060 8GB GPU 上于 3 小时内完成训练。
 
-## Project Structure
+## 项目结构
 
 ```
 mulun/
-├── __init__.py              # Package root
-├── model_base.py            # MiniMind Transformer backbone
-├── decision_head.py         # GameNNDecisionHead (sidecar)
-├── mulun_model.py           # MulunForCausalLM (main model)
-├── tokenizer/               # Extended tokenizer (7195 vocab)
+├── __init__.py              # 包入口
+├── model_base.py            # MiniMind Transformer 骨干
+├── decision_head.py         # GameNNDecisionHead（侧枝）
+├── mulun_model.py           # MulunForCausalLM（主模型）
+├── tokenizer/               # 扩展词表（7195）
 ├── trainers/
-│   └── train_sft.py         # SFT training script
+│   └── train_sft.py         # SFT 训练脚本
 ├── scripts/
-│   ├── extend_tokenizer.py  # Vocabulary extension tool
-│   ├── gen_decision_data.py # Synthetic decision chain generator
-│   ├── gen_simulator_data.py# Simulator-based trajectory generator
-│   └── gen_trajectory_data.py# Trajectory data formatter
-├── backup_prev_train/       # Mulun-State16 weights
+│   ├── extend_tokenizer.py  # 词表扩展工具
+│   ├── gen_decision_data.py # 决策链数据生成器
+│   ├── gen_simulator_data.py# 模拟器轨迹数据生成
+│   └── gen_trajectory_data.py# 轨迹数据格式化
+├── backup_prev_train/       # Mulun-State16 权重
 │   └── mulun_final.pth
-├── out/                     # Trained weights output
-│   ├── mulun_fusion16_final.pth  # Mulun-Fusion16 weights
-│   └── mulun_classic_final.pth   # Mulun-Classic weights
-├── dataset/                 # Training data
-│   ├── trajectory_data.jsonl     # 6918 trajectory samples
-│   └── ...
-├── PAPER.md                 # English paper
-├── PAPER_CN.md              # Chinese paper
-└── requirements.txt         # Dependencies
+├── out/                     # 训练输出
+│   ├── mulun_fusion16_final.pth  # Mulun-Fusion16 权重
+│   └── mulun_classic_final.pth   # Mulun-Classic 权重
+├── PAPER.md                 # 英文论文
+├── PAPER_CN.md              # 中文论文
+└── requirements.txt         # 依赖
 ```
 
-## Quick Start
+## 快速开始
 
 ```bash
-# Install dependencies
+# 安装依赖
 pip install -r requirements.txt
 
-# Train from scratch (requires MiniMind backbone weight)
+# 从头训练（需要 MiniMind 骨干权重）
 python trainers/train_sft.py \
-  --data-path ../dataset/trajectory_data.jsonl \
+  --data-path ./data/trajectory.jsonl \
   --from-weight ./backup_prev_train/mulun_final.pth \
   --save-dir ./out \
   --batch-size 16 \
@@ -88,14 +91,14 @@ python trainers/train_sft.py \
   --dtype float16
 ```
 
-## Key Design Principles
+## 核心设计原则
 
-1. **Zero backbone modification** — The sidecar attaches without changing Transformer code
-2. **Independent gradient flow** — Decision losses don't corrupt language understanding
-3. **Modular upgradability** — Replace world model or add action heads independently
-4. **Decision-point-only supervision** — Loss computed only at `<think>` tokens
+1. **零骨干修改** — 侧枝附加在 Transformer 旁，不改一行代码
+2. **独立梯度流** — 决策损失不影响语言理解能力
+3. **模块化可升级** — 可独立替换世界模型或添加动作头
+4. **决策点监督** — 仅在 `<think>` token 位置计算决策损失
 
-## Citation
+## 引用
 
 ```bibtex
 @misc{mulun2026,
@@ -106,6 +109,6 @@ python trainers/train_sft.py \
 }
 ```
 
-## License
+## 许可
 
 Apache 2.0
