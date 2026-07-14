@@ -1,48 +1,98 @@
+# Mulun（幕论）— 面向语言引导博弈推理的侧枝决策架构
+
+Mulun 是一种**侧枝决策架构（Sidecar Decision Architecture）**，在不修改底层 Transformer 骨干的前提下，为语言模型添加结构化博弈推理能力。由 **玄幕安全团队** 开发。
+
+> 📄 **论文：**
+> - [PAPER_CN.md](./PAPER_CN.md) — 中文版
+> - [PAPER.md](./PAPER.md) — English
+
 ---
-license: Apache-2.0
-tags: []
 
-#model-type:
-##如 gpt、phi、llama、chatglm、baichuan 等
-#- gpt
+## 架构总览
 
-#domain:
-##如 nlp、cv、audio、multi-modal
-#- nlp
+```
+┌────────────────────────────────────────────────────┐
+│             语言骨干（MiniMind）                     │
+│  64M 参数 · 8 层 Transformer · 768 隐藏维           │
+│  词表：7195 token（6400 基础 + 795 安全术语）        │
+└────────────────────┬───────────────────────────────┘
+                     │ hidden[768] 在 <think> 位置
+                     ▼
+┌────────────────────────────────────────────────────┐
+│           GameNNDecisionHead（侧枝决策头）             │
+│                                                      │
+│  hidden → 状态编码器 → state[16] → RNN决策步          │
+│                                          ↓           │
+│                               动作价值头               │
+│                                 → 策略（3种）         │
+│                                 → 动作（8种）         │
+│                                 → 置信度              │
+│                                          ↓           │
+│                               世界模型                 │
+│                                 → 遏制概率            │
+│                                 → 预测状态            │
+│                                          ↓           │
+│                               思考融合器               │
+│                                 → 偏置后的 LM logits  │
+└────────────────────────────────────────────────────┘
+```
 
-#language:
-##语言代码列表 https://help.aliyun.com/document_detail/215387.html?spm=a2c4g.11186623.0.0.9f8d7467kni6Aa
-#- cn 
+## 发布版本
 
-#metrics:
-##如 CIDEr、Blue、ROUGE 等
-#- CIDEr
+| 版本 | 参数量 | 决策头 | 置信度价差 | 遏制价差 | 核心优势 |
+|:-----|:------:|:------:|:---------:|:--------:|:---------|
+| **Mulun-State16** | 65.5M | 952K MLP | **0.44** | 0.03 | 策略/动作区分最佳 |
+| **Mulun-Fusion16** | 65.7M | 1.2M RSSM | 0.17 | **0.09** | 世界模型/遏制预测最佳 |
+| **Mulun-Classic** | 65.5M | 952K MLP | 0.21 | 0.02 | 均衡折衷 |
 
-#tags:
-##各种自定义，包括 pretrained、fine-tuned、instruction-tuned、RL-tuned 等训练方法和其他
-#- pretrained
+三个版本共享相同的 MiniMind 骨干（64M），仅在侧枝模块上不同。全部可在单张 RTX 5060 8GB GPU 上于 3 小时内完成训练。
 
-#tools:
-##如 vllm、fastchat、llamacpp、AdaSeq 等
-#- vllm
----
-### 当前模型的贡献者未提供更加详细的模型介绍。模型文件和权重，可浏览“模型文件”页面获取。
-#### 您可以通过如下git clone命令，或者ModelScope SDK来下载模型
+## 权重文件
 
-SDK下载
+| 文件 | 对应版本 | 说明 |
+|:----|:---------|:------|
+| `mulun_state16.pth` | State16 | 策略/动作区分最强的版本 |
+| `mulun_fusion16.pth` | Fusion16 | 世界模型/遏制预测最强的版本 |
+| `mulun_classic.pth` | Classic | 均衡折衷版本 |
+
+## 项目结构
+
+```
+mulun/
+├── model_base.py            # MiniMind Transformer 骨干
+├── decision_head.py         # GameNNDecisionHead（侧枝）
+├── mulun_model.py           # MulunForCausalLM（主模型）
+├── tokenizer/               # 扩展词表（7195）
+├── trainers/
+│   └── train_sft.py         # SFT 训练脚本
+├── scripts/                 # 数据生成工具
+├── PAPER.md                 # 英文论文
+├── PAPER_CN.md              # 中文论文
+└── README.md                # 本文件
+```
+
+## 快速开始
+
 ```bash
-#安装ModelScope
-pip install modelscope
-```
-```python
-#SDK模型下载
-from modelscope import snapshot_download
-model_dir = snapshot_download('guaidao2/MuLun-Mind')
-```
-Git下载
-```
-#Git模型下载
-git clone https://www.modelscope.cn/guaidao2/MuLun-Mind.git
+pip install -r requirements.txt
+
+python trainers/train_sft.py \
+  --data-path ./data/trajectory.jsonl \
+  --from-weight ./release/mulun_state16.pth \
+  --save-dir ./out \
+  --batch-size 16 \
+  --epochs 5 \
+  --state-dim 16 \
+  --dtype float16
 ```
 
-<p style="color: lightgrey;">如果您是本模型的贡献者，我们邀请您根据<a href="https://modelscope.cn/docs/ModelScope%E6%A8%A1%E5%9E%8B%E6%8E%A5%E5%85%A5%E6%B5%81%E7%A8%8B%E6%A6%82%E8%A7%88" style="color: lightgrey; text-decoration: underline;">模型贡献文档</a>，及时完善模型卡片内容。</p>
+## 引用
+
+```bibtex
+@misc{mulun2026,
+  title = {Mulun: A Sidecar Decision Architecture for Language-Guided Game-Theoretic Reasoning},
+  author = {XuanMu Security Team},
+  year = {2026},
+  url = {https://github.com/guaidao2/MuLun-Mind}
+}
+```
